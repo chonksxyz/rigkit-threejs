@@ -127,8 +127,8 @@ The indexer zMap has the body and all equipped traits in one voxel list. The rig
 - **Shoes** move with the feet. **Pants** move with the legs.
 - **Sleeves** move with the arms, including thick hoodie sleeves and wide blouse sleeves.
 - **Long hair** that falls over the shoulders stays on the head. It does not move with the arm.
-- **Skirts, dresses and robes** join the legs together. When a garment covers the gap between the legs, `chonk.legsJoined` is `true` and the legs stay on the body, so the garment does not tear when the Chonk walks.
-- **Held accessories** (for example a balloon, a pet or a sword) stay on the body. The arm that holds the item is locked so the hand does not swing away from it. `chonk.armLocks` shows which arm is locked. The rig locks an arm if an item is beside the hand, or if the accessory name is in `ACCESSORIES_LOCK_RIGHT_ARM` or `ACCESSORIES_LOCK_LEFT_ARM`. If the left arm is locked, "wave" uses the right arm.
+- **Skirts, dresses and robes** split with the legs, so the Chonk walks with its legs. The part of the garment between the legs stays on the body.
+- **Held accessories** (for example a balloon, a pet or a sword) stay on the body, also when a part of the item is beside the leg. The arm that holds the item is locked so the hand does not swing away from it. `chonk.armLocks` shows which arm is locked. The rig locks an arm if an item is beside the hand, or if the accessory name is in `ACCESSORIES_LOCK_RIGHT_ARM` or `ACCESSORIES_LOCK_LEFT_ARM`. If the left arm is locked, "wave" uses the right arm.
 
 You can change the locks yourself after `setZMap`: `chonk.armLocks.right = false`.
 
@@ -138,13 +138,13 @@ These rules were checked against about 170 Chonks from the indexer.
 
 - `new ChonkRig({ zMap?, accessory?, voxelSize?, castShadow?, receiveShadow?, material? })`
   - `material` is used for all voxels. It must set `vertexColors: true`. The default is `MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 })`.
-  - `.object`, `.bones`, `.parts`, `.skeleton`, `.restPose`, `.legsJoined`, `.armLocks`
+  - `.object`, `.bones`, `.parts`, `.skeleton`, `.restPose`, `.armLocks`
   - `.setZMap(zMap, { accessory })`, `.resetPose()`, `.dispose()`
 - `new ChonkAnimator(rig, { animation? })`: `.play(name)`, `.update(deltaSeconds)`
 - `fetchChonk(tokenId)`: `{ tokenId, zMap, accessory, metadata }` from indexer.chonks.xyz
 - `fetchChonkIdsByOwner(address)`: token IDs owned by a wallet
 - `loadChonk(tokenId, rigOptions)`: `fetchChonk` and `new ChonkRig` in one call
-- `parseZMap(zMap)`, `classifyVoxel(x, y, z, { legsJoined })`, `analyzeVoxels(voxels)`, `buildVoxelGeometry(cells, offset)`: low-level helpers
+- `parseZMap(zMap)`, `classifyVoxel(x, y, z)`, `analyzeVoxels(voxels)`, `buildVoxelGeometry(cells, offset)`: low-level helpers
 
 ## Tests
 
@@ -153,7 +153,7 @@ npm install
 npm test
 ```
 
-The tests use 10 real Chonks from the indexer (in `test/fixtures.json`). They check the trait rules: sleeves, long hair, shoes, pants, skirts, robes and held items. They also check the mesh builder and the animations.
+The tests use 11 real Chonks from the indexer (in `test/fixtures.json`). They check the trait rules: sleeves, long hair, shoes, pants, skirts, robes and held items. They also check the mesh builder and the animations.
 
 ## Rendering
 

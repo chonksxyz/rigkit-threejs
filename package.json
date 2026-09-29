@@ -1,6 +1,6 @@
 {
   "name": "rigkit-threejs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RigKitThreeJS: rigged, animated voxel Chonks for three.js",
   "license": "MIT",
   "author": "Chonks (https://chonks.xyz)",

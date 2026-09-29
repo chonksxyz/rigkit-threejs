@@ -9,7 +9,6 @@ import {
   ChonkRig,
   ChonkAnimator,
   parseZMap,
-  analyzeVoxels,
   classifyVoxel,
   buildVoxelGeometry,
 } from "../index.js";
@@ -25,7 +24,7 @@ function partOf(tokenId, [x, y, z]) {
     voxels.some((v) => v.x === x && v.y === y && v.z === z),
     `Chonk ${tokenId} has no voxel at ${x},${y},${z}`
   );
-  return classifyVoxel(x, y, z, analyzeVoxels(voxels));
+  return classifyVoxel(x, y, z);
 }
 
 const triangles = (geometry) => geometry.index.count / 3;
@@ -39,12 +38,11 @@ test("parseZMap reads 0x-prefixed hex and a later voxel replaces an earlier one"
   ]);
 });
 
-test("a base body has every limb, no joined legs and no arm locks", () => {
+test("a base body has every limb and no arm locks", () => {
   const rig = new ChonkRig({ zMap: BASE_BODIES[0].zMap });
   for (const [part, group] of Object.entries(rig.parts)) {
     assert.equal(group.children.length, 1, `${part} has a mesh`);
   }
-  assert.equal(rig.legsJoined, false);
   assert.deepEqual(rig.armLocks, { left: false, right: false });
 });
 
@@ -91,20 +89,15 @@ test("shoes move with the feet and pants move with the legs", () => {
   assert.equal(partOf(27543, [14, 21, 5]), "body", "the crotch stays on the body");
 });
 
-test("skirts, dresses, mermaid tails and robes join the legs", () => {
+test("skirts, dresses, mermaid tails and robes move with the legs", () => {
   for (const tokenId of [11890, 45021, 56046]) {
     const rig = new ChonkRig({ zMap: chonk(tokenId).zMap });
-    assert.equal(rig.legsJoined, true, `Chonk ${tokenId} (${JSON.stringify(chonk(tokenId).traits)})`);
     for (const part of ["leftLeg", "rightLeg", "leftFoot", "rightFoot"]) {
-      assert.equal(rig.parts[part].children.length, 0, `Chonk ${tokenId} ${part} is empty`);
+      assert.equal(rig.parts[part].children.length, 1, `Chonk ${tokenId} ${part} has a mesh`);
     }
   }
-});
-
-test("pants do not join the legs", () => {
-  for (const tokenId of [38870, 10174, 61028, 7813, 27543, 12799, 2]) {
-    assert.equal(new ChonkRig({ zMap: chonk(tokenId).zMap }).legsJoined, false, `Chonk ${tokenId}`);
-  }
+  assert.equal(partOf(45021, [12, 22, 5]), "leftLeg");
+  assert.equal(partOf(45021, [14, 22, 5]), "body", "the garment between the legs stays on the body");
 });
 
 test("an item beside the right hand locks the right arm", () => {
@@ -123,10 +116,14 @@ test("a floor accessory next to the foot stays on the body", () => {
   assert.equal(partOf(2, [20, 23, 6]), "body");
 });
 
+test("a held item beside the leg stays on the body", () => {
+  // The hilt of the Lightblade Green is next to the right leg.
+  assert.equal(partOf(2349, [19, 21, 6]), "body");
+});
+
 test("setZMap replaces the voxels and the analysis", () => {
   const rig = new ChonkRig({ zMap: chonk(27543).zMap });
   rig.setZMap(chonk(11890).zMap);
-  assert.equal(rig.legsJoined, true);
   assert.deepEqual(rig.armLocks, { left: false, right: false });
   assert.equal(rig.parts.body.children.length, 1);
 });

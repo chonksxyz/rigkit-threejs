@@ -8,8 +8,10 @@ export declare const CHONK_GRID: {
   LEG_ROWS: [number, number];
   ARM_ROWS: [number, number];
   ARM_Z: [number, number];
-  LEFT_LIMB_X: [number, number];
-  RIGHT_LIMB_X: [number, number];
+  LEFT_LEG_X: [number, number];
+  RIGHT_LEG_X: [number, number];
+  LEFT_ARM_X: [number, number];
+  RIGHT_ARM_X: [number, number];
 };
 
 export type ChonkBoneName =
@@ -35,7 +37,6 @@ export interface ChonkVoxel {
 }
 
 export interface ChonkVoxelAnalysis {
-  legsJoined: boolean;
   lockLeftArm: boolean;
   lockRightArm: boolean;
 }
@@ -47,7 +48,7 @@ export declare const ACCESSORIES_LOCK_LEFT_ARM: string[];
 
 export declare function parseZMap(zMap: string): ChonkVoxel[];
 export declare function analyzeVoxels(voxels: ChonkVoxel[]): ChonkVoxelAnalysis;
-export declare function classifyVoxel(x: number, y: number, z: number, options?: { legsJoined?: boolean }): ChonkPart;
+export declare function classifyVoxel(x: number, y: number, z: number): ChonkPart;
 /** Merged, vertex-coloured geometry of the outer faces of integer grid cells (y up). */
 export declare function buildVoxelGeometry(cells: ChonkVoxel[], offset?: [number, number, number]): BufferGeometry;
 
@@ -73,8 +74,6 @@ export declare class ChonkRig {
   readonly skeleton: Skeleton;
   readonly restPose: Record<ChonkBoneName, { position: Vector3; quaternion: Quaternion }>;
   readonly material: Material;
-  /** True when a skirt, dress or robe joins the legs. The legs then stay on the body. */
-  legsJoined: boolean;
   /** Arms that hold an item and should not swing. */
   armLocks: { left: boolean; right: boolean };
   accessory: string | null;

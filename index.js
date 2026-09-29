@@ -23,8 +23,13 @@ export const CHONK_GRID = {
   LEG_ROWS: [21, 22],
   ARM_ROWS: [17, 20],
   ARM_Z: [5, 6],
-  LEFT_LIMB_X: [9, 13],
-  RIGHT_LIMB_X: [15, 19],
+  // Leg columns. Voxels beside them (for example the hilt of a held sword)
+  // stay on the body.
+  LEFT_LEG_X: [11, 13],
+  RIGHT_LEG_X: [15, 17],
+  // Arm columns, including wide sleeves.
+  LEFT_ARM_X: [8, 10],
+  RIGHT_ARM_X: [18, 20],
 };
 
 export const BONE_NAMES = [
@@ -96,43 +101,39 @@ export function parseZMap(zMap) {
 
 /**
  * Finds how traits change the rig:
- * - legsJoined: a skirt, dress or robe covers the gap between the legs. The
- *   legs then stay on the body so the garment does not tear when walking.
  * - lockLeftArm / lockRightArm: an item sits beside the hand (for example a
  *   balloon or a pet), so that arm should not swing away from it.
  */
 export function analyzeVoxels(voxels) {
-  const { MIDDLE_X, FEET_Y, LEG_ROWS, LEFT_LIMB_X, RIGHT_LIMB_X } = CHONK_GRID;
-  let legsJoined = false;
+  const { LEFT_ARM_X, RIGHT_ARM_X } = CHONK_GRID;
   let lockLeftArm = false;
   let lockRightArm = false;
   for (const { x, y } of voxels) {
-    if (x === MIDDLE_X && y >= LEG_ROWS[1] && y <= FEET_Y) legsJoined = true;
     if (y >= 18 && y <= 20) {
-      if (x < LEFT_LIMB_X[0] - 1) lockLeftArm = true;
-      if (x > RIGHT_LIMB_X[1] + 1) lockRightArm = true;
+      if (x < LEFT_ARM_X[0]) lockLeftArm = true;
+      if (x > RIGHT_ARM_X[1]) lockRightArm = true;
     }
   }
-  return { legsJoined, lockLeftArm, lockRightArm };
+  return { lockLeftArm, lockRightArm };
 }
 
 /**
  * Returns the body part a voxel belongs to: "leftFoot", "rightFoot",
  * "leftLeg", "rightLeg", "leftArm", "rightArm" or "body".
  */
-export function classifyVoxel(x, y, z, { legsJoined = false } = {}) {
-  const { FEET_Y, LEG_ROWS, ARM_ROWS, ARM_Z, LEFT_LIMB_X, RIGHT_LIMB_X } = CHONK_GRID;
-  const isLeft = x >= LEFT_LIMB_X[0] && x <= LEFT_LIMB_X[1];
-  const isRight = x >= RIGHT_LIMB_X[0] && x <= RIGHT_LIMB_X[1];
+export function classifyVoxel(x, y, z) {
+  const { FEET_Y, LEG_ROWS, ARM_ROWS, ARM_Z, LEFT_LEG_X, RIGHT_LEG_X } = CHONK_GRID;
+  const isLeft = x >= LEFT_LEG_X[0] && x <= LEFT_LEG_X[1];
+  const isRight = x >= RIGHT_LEG_X[0] && x <= RIGHT_LEG_X[1];
 
-  if (!legsJoined) {
-    if (y === FEET_Y) {
-      if (isLeft) return "leftFoot";
-      if (isRight) return "rightFoot";
-    } else if (y >= LEG_ROWS[0] && y <= LEG_ROWS[1]) {
-      if (isLeft) return "leftLeg";
-      if (isRight) return "rightLeg";
-    }
+  // Skirts, dresses and robes split with the legs. The garment between the
+  // legs stays on the body.
+  if (y === FEET_Y) {
+    if (isLeft) return "leftFoot";
+    if (isRight) return "rightFoot";
+  } else if (y >= LEG_ROWS[0] && y <= LEG_ROWS[1]) {
+    if (isLeft) return "leftLeg";
+    if (isRight) return "rightLeg";
   }
 
   // Arms are 2 columns wide. The top row only has the inner column, so hair
@@ -276,7 +277,6 @@ export class ChonkRig {
     this.castShadow = castShadow;
     this.receiveShadow = receiveShadow;
     this.material = material;
-    this.legsJoined = false;
     this.armLocks = { left: false, right: false };
     this.accessory = null;
 
@@ -336,7 +336,6 @@ export class ChonkRig {
 
     const voxels = parseZMap(zMap);
     const analysis = analyzeVoxels(voxels);
-    this.legsJoined = analysis.legsJoined;
     this.accessory = accessory;
     this.armLocks = {
       left: analysis.lockLeftArm || ACCESSORIES_LOCK_LEFT_ARM.includes(accessory),
@@ -346,7 +345,7 @@ export class ChonkRig {
     // Grid cells per part, with y flipped so it points up (the feet row is 0).
     const cellsByPart = {};
     for (const { x, y, z, color } of voxels) {
-      const part = classifyVoxel(x, y, z, analysis);
+      const part = classifyVoxel(x, y, z);
       (cellsByPart[part] ??= []).push({ x, y: CHONK_GRID.FEET_Y - y, z, color });
     }
 
