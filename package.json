@@ -1,0 +1,40 @@
+{
+  "name": "rigkit-threejs",
+  "version": "0.1.0",
+  "description": "RigKitThreeJS: rigged, animated voxel Chonks for three.js",
+  "license": "MIT",
+  "author": "Chonks (https://chonks.xyz)",
+  "homepage": "https://github.com/chonksxyz/rigkit-threejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chonksxyz/rigkit-threejs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chonksxyz/rigkit-threejs/issues"
+  },
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./bodies": {
+      "types": "./bodies.d.ts",
+      "default": "./bodies.js"
+    }
+  },
+  "files": ["index.js", "index.d.ts", "bodies.js", "bodies.d.ts", "LICENSE"],
+  "sideEffects": false,
+  "keywords": ["three", "threejs", "chonks", "voxel", "rig", "animation"],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "devDependencies": {
+    "three": "^0.186.1"
+  }
+}

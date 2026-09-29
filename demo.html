@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RigKitThreeJS demo</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #1c1c1c; font: 13px system-ui, sans-serif; color: #eee; }
+      #panel { position: fixed; top: 12px; left: 12px; width: 280px; padding: 12px; background: rgba(0, 0, 0, 0.6); border-radius: 8px; }
+      #panel > div { margin-bottom: 8px; }
+      input, select, button { font: inherit; }
+      input[type="number"] { width: 90px; }
+      button.active { background: #ffd24a; }
+      #info { white-space: pre-wrap; opacity: 0.8; }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="panel">
+      <div>
+        Token ID <input id="tokenId" type="number" min="1" value="27543" />
+        <button id="load">Load</button>
+      </div>
+      <div>
+        Base body <select id="body"></select>
+      </div>
+      <div id="animations"></div>
+      <div><label><input id="bones" type="checkbox" /> Show bones</label></div>
+      <div>WASD move, Shift run, Space jump, Q wave, E bow</div>
+      <div id="info"></div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { ChonkRig, ChonkAnimator, ANIMATIONS, fetchChonk } from "./index.js";
+      import { BASE_BODIES } from "./bodies.js";
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x333333);
+      const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+      camera.position.set(2.5, 2.2, 4.5);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.9, 0);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const sun = new THREE.DirectionalLight(0xffffff, 2);
+      sun.position.set(3, 6, 4);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.normalBias = 0.02;
+      scene.add(sun);
+
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }));
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+      scene.add(new THREE.GridHelper(100, 100, 0xcccccc, 0xdddddd));
+
+      // The rig and animator
+      const chonk = new ChonkRig({ zMap: BASE_BODIES[1].zMap });
+      scene.add(chonk.object);
+      const animator = new ChonkAnimator(chonk);
+      const skeletonHelper = new THREE.SkeletonHelper(chonk.object);
+      skeletonHelper.visible = false;
+      scene.add(skeletonHelper);
+
+      // UI
+      const info = document.getElementById("info");
+      const showInfo = (title, attributes = []) => {
+        info.textContent = [
+          title,
+          ...attributes.map((a) => `${a.trait_type}: ${a.value}`),
+          `legsJoined: ${chonk.legsJoined}`,
+          `armLocks: left ${chonk.armLocks.left}, right ${chonk.armLocks.right}`,
+        ].join("\n");
+      };
+
+      async function loadToken(id) {
+        info.textContent = `Loading Chonk #${id}...`;
+        try {
+          const { zMap, accessory, metadata } = await fetchChonk(id);
+          chonk.setZMap(zMap, { accessory });
+          showInfo(metadata.name ?? `Chonk #${id}`, metadata.attributes);
+        } catch (error) {
+          info.textContent = String(error);
+        }
+      }
+
+      const bodySelect = document.getElementById("body");
+      for (const body of BASE_BODIES) bodySelect.add(new Option(body.name, body.id));
+      bodySelect.value = "1";
+      bodySelect.onchange = () => {
+        const body = BASE_BODIES.find((b) => b.id === Number(bodySelect.value));
+        chonk.setZMap(body.zMap);
+        showInfo(body.name);
+      };
+
+      const tokenInput = document.getElementById("tokenId");
+      document.getElementById("load").onclick = () => loadToken(tokenInput.value);
+      document.getElementById("bones").onchange = (e) => (skeletonHelper.visible = e.target.checked);
+
+      let manualAnimation = "idle";
+      const buttons = {};
+      for (const name of ANIMATIONS) {
+        const button = document.createElement("button");
+        button.textContent = name;
+        button.onclick = () => (name === "jump" ? jump() : (manualAnimation = name));
+        document.getElementById("animations").append(button, " ");
+        buttons[name] = button;
+      }
+
+      // The jump animation only poses the body. Like the physics controller in the
+      // playground, the app moves the whole Chonk up and down.
+      const JUMP_SPEED = 5;
+      const GRAVITY = 15;
+      let velocityY = 0;
+      const jump = () => {
+        if (chonk.object.position.y === 0) velocityY = JUMP_SPEED;
+      };
+
+      // Keyboard movement
+      const keys = new Set();
+      addEventListener("keydown", (e) => {
+        if (e.target instanceof HTMLInputElement) return;
+        keys.add(e.code);
+        if (e.code === "Space") jump();
+        if (e.code === "KeyQ") manualAnimation = "wave";
+        if (e.code === "KeyE") manualAnimation = "bow";
+      });
+      addEventListener("keyup", (e) => {
+        keys.delete(e.code);
+        if (e.code === "KeyQ" || e.code === "KeyE") manualAnimation = "idle";
+      });
+
+      const direction = new THREE.Vector3();
+      const timer = new THREE.Timer();
+      renderer.setAnimationLoop((time) => {
+        timer.update(time);
+        const delta = Math.min(timer.getDelta(), 0.1);
+
+        direction.set(
+          (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0),
+          0,
+          (keys.has("KeyS") ? 1 : 0) - (keys.has("KeyW") ? 1 : 0)
+        );
+        const running = keys.has("ShiftLeft") || keys.has("ShiftRight");
+        let animation = manualAnimation;
+        if (direction.lengthSq() > 0) {
+          direction.normalize();
+          chonk.object.position.addScaledVector(direction, delta * (running ? 4 : 1.6));
+          chonk.object.rotation.y = Math.atan2(direction.x, direction.z); // the Chonk faces +Z
+          animation = running ? "run" : "walk";
+        }
+        if (velocityY !== 0 || chonk.object.position.y > 0) {
+          velocityY -= GRAVITY * delta;
+          chonk.object.position.y = Math.max(0, chonk.object.position.y + velocityY * delta);
+          if (chonk.object.position.y === 0) velocityY = 0;
+          else animation = "jump";
+        }
+
+        if (animation !== animator.animation) animator.play(animation);
+        for (const name of ANIMATIONS) buttons[name].classList.toggle("active", name === animation);
+        animator.update(delta);
+
+        controls.target.lerp(chonk.object.position.clone().setY(0.9), 0.1);
+        controls.update();
+        renderer.render(scene, camera);
+      });
+
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      const idFromUrl = new URLSearchParams(location.search).get("id");
+      if (idFromUrl) {
+        tokenInput.value = idFromUrl;
+        loadToken(idFromUrl);
+      } else {
+        showInfo(BASE_BODIES[1].name);
+      }
+
+      // Handy for testing from the console
+      Object.assign(window, { chonk, animator });
+    </script>
+  </body>
+</html>
